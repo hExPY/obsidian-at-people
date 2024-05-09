@@ -3,12 +3,23 @@ const { App, Editor, EditorSuggest, TFile, Notice, Plugin, PluginSettingTab, Set
 const DEFAULT_SETTINGS = {
 	peopleFolder: 'People/',
 	// Defaults:
-	// useExplicitLinks: undefined,
-	// useLastNameFolder: undefined,
+	// peopleFolder: undefined
+	// folderMode: undefined
 }
 
 const NAME_REGEX = /\/@([^\/]+)\.md$/
 const LAST_NAME_REGEX = /([\S]+)$/
+
+const multiLineDesc = (strings) => {
+	const descFragment = document.createDocumentFragment();
+	strings.map((string, i, arr) => {
+		descFragment.appendChild(document.createTextNode(string));
+		if (arr.length - 1 !== i) {
+			descFragment.appendChild(document.createElement("br"))
+		};
+	})
+	return descFragment;
+}
 
 const getPersonName = (filename, settings) => filename.startsWith(settings.peopleFolder)
 	&& filename.endsWith('.md')
@@ -28,7 +39,8 @@ module.exports = class AtPeople extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+		const storedSettings = await this.loadData()
+		this.settings = await Object.assign({}, DEFAULT_SETTINGS, storedSettings)
 	}
 
 	async saveSettings() {
@@ -72,6 +84,8 @@ class AtPeopleSuggestor extends EditorSuggest {
 		super(app)
 		this.settings = settings
 	}
+	folderModePerPerson = () => this.settings.folderMode === "PER_PERSON"
+	folderModePerLastname = () => this.settings.folderMode === "PER_LASTNAME"
 	updatePeopleMap(peopleFileMap) {
 		this.peopleFileMap = peopleFileMap
 	}
@@ -119,11 +133,14 @@ class AtPeopleSuggestor extends EditorSuggest {
 	}
 	selectSuggestion(value) {
 		let link
-		if (this.settings.useExplicitLinks && this.settings.useLastNameFolder) {
+		if (this.folderModePerPerson() && this.settings.useExplicitLinks) {
+			link = `[[${this.settings.peopleFolder}@${value.displayText}/@${value.displayText}.md|@${value.displayText}]]`
+		}
+		else if (this.settings.useExplicitLinks && this.folderModePerLastname()) {
 			let lastName = LAST_NAME_REGEX.exec(value.displayText)
 			lastName = lastName && lastName[1] && (lastName[1] + '/') || ''
 			link = `[[${this.settings.peopleFolder}${lastName}@${value.displayText}.md|@${value.displayText}]]`
-		} else if (this.settings.useExplicitLinks && !this.settings.useLastNameFolder) {
+		} else if (this.settings.useExplicitLinks && !this.folderModePerLastname()) {
 			link = `[[${this.settings.peopleFolder}@${value.displayText}.md|@${value.displayText}]]`
 		} else {
 			link = `[[@${value.displayText}]]`
@@ -160,19 +177,32 @@ class AtPeopleSettingTab extends PluginSettingTab {
 			.setName('Explicit links')
 			.setDesc('When inserting links include the full path, e.g. [[People/@Bob Dole.md|@Bob Dole]]')
 			.addToggle(
-				toggle => toggle.onChange(async (value) => {
+				toggle => toggle
+				.setValue(this.plugin.settings.useExplicitLinks)
+				.onChange(async (value) => {
 					this.plugin.settings.useExplicitLinks = value
 					await this.plugin.saveSettings()
 				})
 			)
 		new Setting(containerEl)
-			.setName('Last name folder')
-			.setDesc('When using explicit links, use the "last name" (the last non-spaced word) as a sub-folder, e.g. [[People/Dole/@Bob Dole.md|@Bob Dole]]')
-			.addToggle(
-				toggle => toggle.onChange(async (value) => {
-					this.plugin.settings.useLastNameFolder = value
-					await this.plugin.saveSettings()
-				})
+			.setName('Folder Mode')
+			.setDesc(multiLineDesc([
+			"Default - Creates a file for every person in the path defined in \"People folder\" e.g. [[People/@Bob Dole|@Bob Dole]]",
+			"","Everything non-default requires \"Explicit links\" to be enabled!",
+			"Per Person - Creates a folder (and a note with the same name) for every person in the path defined in \"People folder\" e.g. [[People/@Bob Dole/@Bob Dole|@Bob Dole]]",
+			"Per Lastname - Creates a folder with the Lastname of the person in the path defined in \"People folder\" e.g. [[People/Dole/@Bob Dole|@Bob Dole]]"
+			]))
+			.addDropdown(
+				dropdown => {
+					dropdown.addOption("DEFAULT", "Default");
+					dropdown.addOption("PER_PERSON", "Per Person");
+					dropdown.addOption("PER_LASTNAME", "Per Lastname");
+					dropdown.setValue(this.plugin.settings.folderMode)
+					dropdown.onChange(async (value) => {
+						this.plugin.settings.folderMode = value
+						await this.plugin.saveSettings()
+					})
+				}
 			)
 	}
 }
