@@ -44,13 +44,57 @@ But you might rather make that explicit, in which case you can enable "explicit 
 [[People/@Rich Hickey.md|@Rich Hickey]]
 ```
 
-### 3. Last name grouping?
+### 3. Folder Mode
 
-For my personal Obsidian vaults, I have a lot of people with my same last name, so I put them in sub-folders for organization.
+You can store the people in three different ways using the dropdown.
 
-You can toggle the "last name folder" option, and it'll do that in the links.
+#### Default
 
-The earlier example folder structure would be:
+This setting is the default. It creates a single file per person.
+
+Example:
+
+```
+People/
+	@Rich Hickey.md
+	@Rich Harris.md
+```
+
+And then the inserted link would look like:
+
+```
+[[People/@Rich Hickey.md|@Rich Hickey]]
+or if explicit link is disabled
+[[@Rich Hickey.md|@Rich Hickey]]
+```
+
+#### Per Person
+
+This setting will create a directory per person. You can use it to store multiple notes related to the same person. It requires "Explicit link" to be enabled.
+
+Example:
+
+```
+People/
+	@Rich Hickey/
+		@Rich Hickey.md
+		more-files.md
+	@Rich Harris
+		@Rich Harris.md
+		more-files.md
+```
+
+And then the inserted link would look like:
+
+```
+[[People/@Rich Hickey.md/@Rich Hickey.md|@Rich Hickey]]
+```
+
+#### Per Lastname
+
+This setting will create a directory per lastname and a single file for the person itself. You can e.g. use it if you have many people sharing the same lastname. It requires "Explicit link" to be enabled.
+
+Example:
 
 ```
 People/
